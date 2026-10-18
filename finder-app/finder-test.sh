@@ -1,14 +1,18 @@
 #!/bin/sh
-# Tester script for assignment 1 and assignment 2
-# Author: Siddhant Jajoo
-
 set -e
 set -u
 
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
-username=$(cat conf/username.txt)
+
+if [ -d "/etc/finder-app/conf" ]; then
+    CONFDIR="/etc/finder-app/conf"
+else
+    CONFDIR="conf"
+fi
+
+username=$(cat${CONFDIR}/username.txt)
 
 if [ $# -lt 3 ]
 then
@@ -25,47 +29,34 @@ else
 	WRITEDIR=/tmp/aeld-data/$3
 fi
 
-MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines are ${NUMFILES}"
-
-echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}"
-
+MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines are${NUMFILES}"
 rm -rf "${WRITEDIR}"
+mkdir -p "$WRITEDIR"
 
-# create $WRITEDIR if not assignment1
-assignment=`cat ../conf/assignment.txt`
-
-if [ $assignment != 'assignment1' ]
-then
-	mkdir -p "$WRITEDIR"
-
-	#The WRITEDIR is in quotes because if the directory path consists of spaces, then variable substitution will consider it as multiple argument.
-	#The quotes signify that the entire string in WRITEDIR is a single string.
-	#This issue can also be resolved by using double square brackets i.e [[ ]] instead of using quotes.
-	if [ -d "$WRITEDIR" ]
-	then
-		echo "$WRITEDIR created"
-	else
-		exit 1
-	fi
-fi
-#echo "Removing the old writer utility and compiling as a native application"
-
-for i in $( seq 1 $NUMFILES)
+for i in $( seq 1$NUMFILES)
 do
-	./writer.sh "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	if command -v writer >/dev/null 2>&1; then
+		writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	else
+		./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	fi
 done
 
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+if command -v finder.sh >/dev/null 2>&1; then
+	OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
+else
+	OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+fi
 
-# remove temporary directories
+echo "${OUTPUTSTRING}" > /tmp/assignment4-result.txt
 rm -rf /tmp/aeld-data
 
 set +e
-echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
+echo ${OUTPUTSTRING} \vert{} grep "${MATCHSTR}"
 if [ $? -eq 0 ]; then
 	echo "success"
 	exit 0
 else
-	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
+	echo "failed: expected ${MATCHSTR} in${OUTPUTSTRING}"
 	exit 1
 fi
